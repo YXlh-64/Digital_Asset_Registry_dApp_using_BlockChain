@@ -8,9 +8,10 @@ interface WalletRegistrationProps {
 
 export default function WalletRegistration({ onRegister }: WalletRegistrationProps) {
   const [error, setError] = useState('');
+  const [walletAddress, setWalletAddress] = useState('');
   const { connect, isConnecting, isMetaMaskAvailable, account } = useWallet();
 
-  // Auto-register when account is connected
+  // Auto-register when account is connected via MetaMask
   useEffect(() => {
     if (account) {
       onRegister(account);
@@ -30,6 +31,25 @@ export default function WalletRegistration({ onRegister }: WalletRegistrationPro
     } catch (err: any) {
       setError(err.message || 'Failed to connect wallet. Please try again.');
     }
+  };
+
+  const handleManualSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    if (!walletAddress) {
+      setError('Please enter a wallet address');
+      return;
+    }
+
+    // Basic validation for Ethereum address format
+    if (!/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
+      setError('Invalid wallet address format. Must start with 0x and be 42 characters long.');
+      return;
+    }
+
+    // Register with manually entered address
+    onRegister(walletAddress);
   };
 
   return (
@@ -121,6 +141,43 @@ export default function WalletRegistration({ onRegister }: WalletRegistrationPro
               </>
             )}
           </button>
+
+          {/* Divider */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-200"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-4 bg-white text-gray-500">Or enter manually</span>
+            </div>
+          </div>
+
+          {/* Manual Entry Form */}
+          <form onSubmit={handleManualSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="wallet-address" className="block text-sm font-medium text-gray-700 mb-2">
+                Wallet Address
+              </label>
+              <input
+                id="wallet-address"
+                type="text"
+                value={walletAddress}
+                onChange={(e) => {
+                  setWalletAddress(e.target.value);
+                  setError('');
+                }}
+                placeholder="0x..."
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full bg-gray-900 text-white py-3 px-4 rounded-xl hover:bg-gray-800 transition-all duration-200 font-medium"
+            >
+              Register & Continue
+            </button>
+          </form>
 
           {/* Info Note */}
           <div className="mt-6 p-3 bg-amber-50 border border-amber-100 rounded-lg">

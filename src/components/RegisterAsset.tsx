@@ -60,7 +60,6 @@ export default function RegisterAsset({ onSubmit, onCancel }: RegisterAssetProps
       // Step 1: Upload file to IPFS
       setTxStatus('uploading');
       console.log('Uploading file to IPFS...');
-      const uploadResult = await uploadToPinata(file);
       const assetUploadResult = await uploadToPinata(file);
       console.log('File uploaded to IPFS, CID:', assetUploadResult.cid);
 

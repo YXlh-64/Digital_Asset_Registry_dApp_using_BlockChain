@@ -178,6 +178,38 @@ export const switchNetwork = async (networkKey: keyof typeof config.networks): P
 };
 
 /**
+ * Check if the current network is Sepolia and switch if not
+ */
+export const ensureSepoliaNetwork = async (): Promise<boolean> => {
+  if (!isMetaMaskInstalled() || !window.ethereum) {
+    throw new Error('MetaMask is not installed');
+  }
+
+  try {
+    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+    console.log('🌐 Current Network Chain ID:', chainId);
+    
+    if (chainId !== config.networks.sepolia.chainId) {
+      console.log(`⚠️ Wrong network detected. Current: ${chainId}, Expected: ${config.networks.sepolia.chainId}`);
+      console.log('🔄 Attempting to switch to Sepolia...');
+      
+      await switchNetwork('sepolia');
+      console.log('✅ Successfully switched to Sepolia');
+      return true;
+    }
+    
+    console.log('✅ Already on Sepolia network');
+    return true;
+  } catch (error: any) {
+    console.error('❌ Failed to switch network:', error);
+    if (error.code === 4001) {
+      throw new Error('User rejected the network switch request. Please switch to Sepolia manually in MetaMask.');
+    }
+    throw new Error(`Failed to switch to Sepolia network: ${error.message}`);
+  }
+};
+
+/**
  * Listen for account changes
  */
 export const onAccountsChanged = (callback: (accounts: string[]) => void): void => {

@@ -7,6 +7,7 @@ import ExplorePage from './components/ExplorePage';
 import Sidebar from './components/Sidebar';
 import { loadMyAssets, loadAllAssets, loadAsset } from './utils/assetLoader';
 import { logUsage, transferOwnership, grantPermission, revokePermission } from './utils/contract';
+import { ensureSepoliaNetwork } from './utils/web3';
 
 export interface Asset {
   id: string;
@@ -37,13 +38,12 @@ export default function App() {
   const [isLoadingAssets, setIsLoadingAssets] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Clear wallet on mount to force fresh connection
+  // Clear wallet on mount to force fresh connection - run ONCE on app start
   useEffect(() => {
-    // Clear any saved wallet to force user to connect
-    localStorage.removeItem('walletAddress');
-    setWalletAddress('');
-    setIsWalletRegistered(false);
-  }, []);
+    // Always clear localStorage on initial load
+    localStorage.clear();
+    console.log('🔴 Wallet cleared - forcing fresh connection');
+  }, []); // Empty dependency array = runs only once on mount
 
   // Load assets from BLOCKCHAIN when wallet connects
   useEffect(() => {
@@ -58,6 +58,16 @@ export default function App() {
     
     try {
       console.log('Loading assets from blockchain for:', walletAddress);
+      
+      // Check and switch to Sepolia network if needed
+      try {
+        await ensureSepoliaNetwork();
+      } catch (networkError: any) {
+        console.error('❌ Network error:', networkError);
+        setLoadError(networkError.message || 'Failed to switch to Sepolia network. Please switch manually in MetaMask.');
+        setIsLoadingAssets(false);
+        return;
+      }
       
       // Load my assets for dashboard
       const myAssets = await loadMyAssets(walletAddress);
@@ -330,19 +340,19 @@ export default function App() {
 
   // Show error banner if blockchain loading failed
   const errorBanner = loadError && (
-    <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+    <div className={`border-l-4 p-4 ${loadError.includes('Wrong Network') ? 'bg-red-50 border-red-400' : 'bg-yellow-50 border-yellow-400'}`}>
       <div className="flex">
         <div className="flex-shrink-0">
-          <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+          <svg className={`h-5 w-5 ${loadError.includes('Wrong Network') ? 'text-red-400' : 'text-yellow-400'}`} viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
           </svg>
         </div>
         <div className="ml-3">
-          <p className="text-sm text-yellow-700">
+          <p className={`text-sm ${loadError.includes('Wrong Network') ? 'text-red-700' : 'text-yellow-700'}`}>
             {loadError}
             <button
               onClick={loadAssetsFromBlockchain}
-              className="ml-4 font-medium underline text-yellow-700 hover:text-yellow-600"
+              className={`ml-4 font-medium underline ${loadError.includes('Wrong Network') ? 'text-red-700 hover:text-red-600' : 'text-yellow-700 hover:text-yellow-600'}`}
             >
               Retry
             </button>

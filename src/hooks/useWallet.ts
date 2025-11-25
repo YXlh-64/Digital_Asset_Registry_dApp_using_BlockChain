@@ -8,6 +8,7 @@ import {
   removeChainListener,
   isMetaMaskInstalled,
   getChainId,
+  ensureSepoliaNetwork,
 } from '../utils/web3';
 
 export const useWallet = () => {
@@ -35,28 +36,29 @@ export const useWallet = () => {
     };
   }, []);
 
-  // Load existing connection on mount
-  useEffect(() => {
-    const loadAccount = async () => {
-      try {
-        const currentAccount = await getCurrentAccount();
-        if (currentAccount) {
-          setAccount(currentAccount);
-          localStorage.setItem('walletAddress', currentAccount);
-          
-          // Get chain ID
-          const currentChainId = await getChainId();
-          setChainId(currentChainId);
-        }
-      } catch (err) {
-        console.error('Error loading account:', err);
-      }
-    };
-
-    if (isMetaMaskAvailable) {
-      loadAccount();
-    }
-  }, [isMetaMaskAvailable]);
+  // DISABLED: Auto-load existing connection on mount
+  // Users must manually connect each session for better UX
+  // useEffect(() => {
+  //   const loadAccount = async () => {
+  //     try {
+  //       const currentAccount = await getCurrentAccount();
+  //       if (currentAccount) {
+  //         setAccount(currentAccount);
+  //         localStorage.setItem('walletAddress', currentAccount);
+  //         
+  //         // Get chain ID
+  //         const currentChainId = await getChainId();
+  //         setChainId(currentChainId);
+  //       }
+  //     } catch (err) {
+  //       console.error('Error loading account:', err);
+  //     }
+  //   };
+  //
+  //   if (isMetaMaskAvailable) {
+  //     loadAccount();
+  //   }
+  // }, [isMetaMaskAvailable]);
 
   // Handle account changes
   useEffect(() => {
@@ -104,9 +106,19 @@ export const useWallet = () => {
       setAccount(connectedAccount);
       localStorage.setItem('walletAddress', connectedAccount);
 
-      // Get chain ID
+      // Get chain ID and ensure we're on Sepolia
       const currentChainId = await getChainId();
       setChainId(currentChainId);
+      
+      // Check and switch to Sepolia if needed
+      try {
+        await ensureSepoliaNetwork();
+        console.log('✅ Connected to Sepolia network');
+      } catch (networkError: any) {
+        console.warn('⚠️ Network switch failed:', networkError.message);
+        // Don't throw here - let the app handle network issues later
+        // This allows users to connect even if they reject the network switch
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to connect wallet');
       throw err;
