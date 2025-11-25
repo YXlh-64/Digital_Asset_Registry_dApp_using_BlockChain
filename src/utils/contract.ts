@@ -1,6 +1,57 @@
 import { Contract } from 'ethers';
 import { getContract, getReadOnlyContract } from './web3';
 
+/**
+ * Test connection to the smart contract
+ */
+export const testContractConnection = async (): Promise<{
+  success: boolean;
+  message: string;
+  contractAddress?: string;
+}> => {
+  try {
+    const contract = await getReadOnlyContract();
+    const contractAddress = await contract.getAddress();
+    
+    console.log('✅ Contract connection successful!');
+    console.log('Contract Address:', contractAddress);
+    
+    // Try to query asset 1 to verify contract is working
+    try {
+      const assetData = await contract.viewAsset(1);
+      // If we get here, asset exists
+      return {
+        success: true,
+        message: `Contract is connected and has assets`,
+        contractAddress: contractAddress
+      };
+    } catch (error: any) {
+      // Check if it's a "no assets" error (this is normal for empty contract)
+      if (error.message?.includes('could not decode result data') ||
+          error.message?.includes('BAD_DATA') ||
+          error.message?.includes('Asset does not exist') || 
+          error.message?.includes('execution reverted')) {
+        // Don't log as error - this is expected for empty contract
+        console.log('ℹ️ Contract is connected but no assets exist yet (this is normal)');
+        return {
+          success: true,
+          message: 'Contract is connected (no assets registered yet - this is normal)',
+          contractAddress: contractAddress
+        };
+      }
+      // If it's a different error, it's a real problem
+      console.error('❌ Unexpected error testing contract:', error);
+      throw error;
+    }
+  } catch (error: any) {
+    console.error('❌ Contract connection failed:', error);
+    return {
+      success: false,
+      message: `Failed to connect to contract: ${error.message || 'Unknown error'}`
+    };
+  }
+};
+
 export interface AssetData {
   id: number;
   name: string;

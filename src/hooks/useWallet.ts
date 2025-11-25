@@ -19,7 +19,20 @@ export const useWallet = () => {
 
   // Check if MetaMask is installed
   useEffect(() => {
-    setIsMetaMaskAvailable(isMetaMaskInstalled());
+    // Some wallets inject ethereum shortly after page load; check on mount and on window load.
+    const check = () => setIsMetaMaskAvailable(isMetaMaskInstalled());
+    check();
+
+    // Also listen for the page `load` event (wallets sometimes inject after DOM is ready)
+    window.addEventListener('load', check);
+
+    // As an extra fallback, re-check after a short timeout in case injection is delayed
+    const t = setTimeout(check, 500);
+
+    return () => {
+      window.removeEventListener('load', check);
+      clearTimeout(t);
+    };
   }, []);
 
   // Load existing connection on mount

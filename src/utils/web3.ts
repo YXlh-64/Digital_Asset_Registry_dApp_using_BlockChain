@@ -20,7 +20,7 @@ declare global {
  * Check if MetaMask is installed
  */
 export const isMetaMaskInstalled = (): boolean => {
-  return typeof window.ethereum !== 'undefined';
+  return typeof window !== 'undefined' && typeof window.ethereum !== 'undefined' && !!(window.ethereum as any).isMetaMask;
 };
 
 /**
@@ -42,16 +42,34 @@ export const connectWallet = async (): Promise<string> => {
   }
 
   try {
+    // Prefer the EIP-1193 request method directly on window.ethereum because
+    // some provider wrappers may not forward the prompt reliably in all environments.
+    if (window.ethereum && typeof (window.ethereum as any).request === 'function') {
+      try {
+        const accounts: string[] = await (window.ethereum as any).request({ method: 'eth_requestAccounts' });
+        if (!accounts || accounts.length === 0) {
+          throw new Error('No accounts found. Please unlock MetaMask.');
+        }
+        return accounts[0];
+      } catch (err: any) {
+        // Normalize user-rejection errors
+        if (err && (err.code === 4001 || err.code === 'ACTION_REJECTED')) {
+          const e: any = new Error('User rejected the connection request.');
+          e.code = 4001;
+          throw e;
+        }
+        throw err;
+      }
+    }
+
+    // Fallback: use ethers BrowserProvider.send if available
     const provider = getProvider();
     if (!provider) throw new Error('Provider not available');
 
-    // Request account access
-    const accounts = await provider.send('eth_requestAccounts', []);
-    
-    if (accounts.length === 0) {
+    const accounts = await provider.send('eth_requestAccounts', [] as any);
+    if (!accounts || accounts.length === 0) {
       throw new Error('No accounts found. Please unlock MetaMask.');
     }
-
     return accounts[0];
   } catch (error: any) {
     if (error.code === 4001) {
