@@ -37,13 +37,12 @@ export default function App() {
   const [isLoadingAssets, setIsLoadingAssets] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Load wallet from localStorage on mount
+  // Clear wallet on mount to force fresh connection
   useEffect(() => {
-    const savedWallet = localStorage.getItem('walletAddress');
-    if (savedWallet) {
-      setWalletAddress(savedWallet);
-      setIsWalletRegistered(true);
-    }
+    // Clear any saved wallet to force user to connect
+    localStorage.removeItem('walletAddress');
+    setWalletAddress('');
+    setIsWalletRegistered(false);
   }, []);
 
   // Load assets from BLOCKCHAIN when wallet connects
@@ -112,14 +111,33 @@ export default function App() {
   const handleWalletRegistration = (address: string) => {
     setWalletAddress(address);
     setIsWalletRegistered(true);
-    localStorage.setItem('walletAddress', address);
+    // Do NOT save to localStorage - wallet should not persist
+    // localStorage.setItem('walletAddress', address);
   };
 
   const handleDisconnectWallet = () => {
+    console.log('🔴 DISCONNECT CLICKED - Starting disconnect process...');
+    
+    // Clear all state
     setWalletAddress('');
     setIsWalletRegistered(false);
-    localStorage.removeItem('walletAddress');
+    setAssets([]);
+    setAllAssets([]);
+    setSelectedAsset(null);
     setCurrentView('dashboard');
+    
+    console.log('🔴 State cleared, clearing localStorage...');
+    
+    // Clear localStorage
+    localStorage.removeItem('walletAddress');
+    localStorage.clear();
+    
+    console.log('🔴 localStorage cleared, reloading page...');
+    
+    // Force page reload to ensure clean state
+    setTimeout(() => {
+      window.location.reload();
+    }, 100);
   };
 
   const handleAddAsset = (asset: Omit<Asset, 'id' | 'author' | 'owner' | 'createdAt' | 'permissions' | 'usageLogs'>) => {

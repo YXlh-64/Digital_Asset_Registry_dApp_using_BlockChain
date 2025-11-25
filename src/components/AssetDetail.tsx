@@ -379,7 +379,7 @@ export default function AssetDetail({
                     alert(`To request access to this asset:\n\n1. Copy this asset owner's address: ${asset.owner}\n2. Contact the owner directly\n3. Share your wallet address: ${walletAddress}\n4. Ask them to grant you access using the "Grant Access" button\n\nThe owner will receive your request and can approve it from their dashboard.`);
                   }}
                   style={{ backgroundColor: '#9333ea', color: 'white' }}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 font-semibold rounded-xl hover:opacity-90 active:opacity-80 transition-all shadow-lg"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 font-semibold rounded-xl hover:bg-purple-700 active:bg-purple-800 transition-colors shadow-md"
                 >
                   <Key className="w-5 h-5" />
                   Request Access
