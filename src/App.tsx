@@ -6,7 +6,7 @@ import AssetDetail from './components/AssetDetail';
 import ExplorePage from './components/ExplorePage';
 import Sidebar from './components/Sidebar';
 import { loadMyAssets, loadAllAssets, loadAsset } from './utils/assetLoader';
-import { logUsage, transferOwnership, grantPermission, revokePermission, testContractConnection } from './utils/contract';
+import { logUsage, transferOwnership, grantPermission, revokePermission } from './utils/contract';
 
 export interface Asset {
   id: string;
@@ -37,65 +37,14 @@ export default function App() {
   const [isLoadingAssets, setIsLoadingAssets] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Check if MetaMask is connected on mount (don't auto-connect)
+  // Load wallet from localStorage on mount
   useEffect(() => {
-    const checkMetaMaskConnection = async () => {
-      if (typeof window.ethereum !== 'undefined') {
-        try {
-          // Check if MetaMask is already connected
-          const accounts = await window.ethereum.request({ 
-            method: 'eth_accounts' 
-          });
-          
-          // Only auto-connect if MetaMask has an active connection
-          if (accounts && accounts.length > 0) {
-            const savedWallet = localStorage.getItem('walletAddress');
-            // Verify saved wallet matches MetaMask's connected account
-            if (savedWallet && savedWallet.toLowerCase() === accounts[0].toLowerCase()) {
-              setWalletAddress(savedWallet);
-              setIsWalletRegistered(true);
-            } else {
-              // Clear stale wallet data if it doesn't match
-              localStorage.removeItem('walletAddress');
-            }
-          } else {
-            // MetaMask not connected, clear any saved wallet
-            localStorage.removeItem('walletAddress');
-          }
-        } catch (error) {
-          console.error('Error checking MetaMask connection:', error);
-          localStorage.removeItem('walletAddress');
-        }
-      }
-    };
-    
-    checkMetaMaskConnection();
-    
-    // Listen for account changes in MetaMask
-    const handleAccountsChanged = (accounts: string[]) => {
-      if (accounts.length === 0) {
-        // User disconnected MetaMask
-        console.log('MetaMask disconnected');
-        handleDisconnectWallet();
-      } else if (accounts[0].toLowerCase() !== walletAddress.toLowerCase()) {
-        // User switched to a different account
-        console.log('MetaMask account changed to:', accounts[0]);
-        handleDisconnectWallet(); // Clear old data
-        // User will need to click "Connect Wallet" again
-      }
-    };
-    
-    if (typeof window.ethereum !== 'undefined') {
-      window.ethereum.on('accountsChanged', handleAccountsChanged);
+    const savedWallet = localStorage.getItem('walletAddress');
+    if (savedWallet) {
+      setWalletAddress(savedWallet);
+      setIsWalletRegistered(true);
     }
-    
-    // Cleanup listener on unmount
-    return () => {
-      if (typeof window.ethereum !== 'undefined') {
-        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-      }
-    };
-  }, [walletAddress]);
+  }, []);
 
   // Load assets from BLOCKCHAIN when wallet connects
   useEffect(() => {
@@ -109,31 +58,20 @@ export default function App() {
     setLoadError(null);
     
     try {
-      console.log('🔗 Connecting to blockchain...');
-      console.log('Loading assets for wallet:', walletAddress);
-      
-      // Test contract connection first
-      const connectionTest = await testContractConnection();
-      console.log('Contract test result:', connectionTest);
-      
-      if (!connectionTest.success) {
-        throw new Error(connectionTest.message);
-      }
+      console.log('Loading assets from blockchain for:', walletAddress);
       
       // Load my assets for dashboard
       const myAssets = await loadMyAssets(walletAddress);
-      console.log('✅ Loaded my assets from blockchain:', myAssets.length, 'assets');
+      console.log('Loaded my assets from blockchain:', myAssets);
       setAssets(myAssets);
       
       // Load ALL assets for explore page
       const allAssetsData = await loadAllAssets();
-      console.log('✅ Loaded all assets from blockchain:', allAssetsData.length, 'total assets');
+      console.log('Loaded all assets from blockchain:', allAssetsData);
       setAllAssets(allAssetsData);
       
-      if (myAssets.length === 0 && allAssetsData.length === 0) {
-        console.log('ℹ️ No assets found on blockchain. This is normal for a new deployment.');
-      } else if (myAssets.length === 0) {
-        console.log('ℹ️ No assets owned by this wallet, but', allAssetsData.length, 'assets exist on the blockchain.');
+      if (myAssets.length === 0) {
+        console.log('No assets found on blockchain for this wallet. This is normal for a new wallet.');
       }
       
       // Also save to localStorage as backup
@@ -141,21 +79,16 @@ export default function App() {
         localStorage.setItem(`assets_${walletAddress}`, JSON.stringify(myAssets));
       }
     } catch (error) {
+      console.error('Failed to load assets from blockchain:', error);
+      
       // Check if it's just a "no assets" error vs actual connection error
       const errorMessage = error instanceof Error ? error.message : String(error);
-      const isEmptyContract = errorMessage.includes('could not decode result data') || 
-                              errorMessage.includes('BAD_DATA') ||
-                              (errorMessage.includes('Failed to connect to contract') && errorMessage.includes('BAD_DATA'));
-      
-      if (isEmptyContract) {
-        // Don't log as error - this is expected for empty contract
-        console.log('ℹ️ No assets registered yet on this contract. This is normal - you can register your first asset!');
+      if (errorMessage.includes('could not decode result data') || errorMessage.includes('BAD_DATA')) {
+        console.log('No assets registered yet on this contract. This is normal for a new deployment.');
         setAssets([]);
         setAllAssets([]);
-        setLoadError(null); // Not an error, just empty contract
+        setLoadError(null); // Not really an error, just no assets yet
       } else {
-        // This is a real error
-        console.error('❌ Failed to load assets from blockchain:', error);
         setLoadError('Failed to load assets from blockchain. Make sure contract is deployed and you\'re on the correct network (Sepolia).');
         
         // Fallback to localStorage
