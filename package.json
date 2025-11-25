@@ -57,6 +57,9 @@
       },
       "scripts": {
             "dev": "vite",
-            "build": "vite build"
-      }
+            "build": "vite build",
+            "predeploy": "npm run build",
+            "deploy": "gh-pages -d dist"
+      },
+      "homepage": "https://yxlh-64.github.io/Digital_Asset_Registry_dApp_using_BlockChain"
 }
